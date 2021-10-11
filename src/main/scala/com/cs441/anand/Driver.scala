@@ -1,6 +1,6 @@
 package com.cs441.anand
 
-import com.cs441.anand.MapReduce.MapReduce3
+import com.cs441.anand.MapReduce.{MapReduce1, MapReduce3}
 import com.cs441.anand.Utils.CreateLogger
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
@@ -35,10 +35,10 @@ object Driver {
   }
 
   def setMapReduce1(job: Job): Unit = {
-    job.setJarByClass(classOf[MapReduce3])
-    job.setMapperClass(classOf[MapReduce3.TokenizerMapper])
-    job.setCombinerClass(classOf[MapReduce3.IntSumReader])
-    job.setReducerClass(classOf[MapReduce3.IntSumReader])
+    job.setJarByClass(classOf[MapReduce1])
+    job.setMapperClass(classOf[MapReduce1.TokenizerMapper])
+    job.setCombinerClass(classOf[MapReduce1.IntSumReader])
+    job.setReducerClass(classOf[MapReduce1.IntSumReader])
     job.setOutputKeyClass(classOf[Text])
     job.setOutputKeyClass(classOf[Text]);
     job.setOutputValueClass(classOf[IntWritable]);
