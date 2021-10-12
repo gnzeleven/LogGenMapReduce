@@ -23,7 +23,7 @@ object MapReduce2 {
 
   class TokenizerMapper extends Mapper[Object, Text, Text, IntWritable] {
 
-    val messageType = new Text()
+    val errorType = new Text()
     val count = new IntWritable(1)
 
     override def map(key: Object, value: Text, context: Mapper[Object, Text, Text, IntWritable]#Context) : Unit = {
@@ -47,8 +47,8 @@ object MapReduce2 {
       logger.info("After: " + endTime.isAfter(time) + "\n")
 
       if (startTime.isBefore(time) && endTime.isAfter(time) && isPatternPresent) {
-        messageType.set(line(2))
-        context.write(messageType, count)
+        errorType.set(line(2))
+        context.write(errorType, count)
       }
     }
   }

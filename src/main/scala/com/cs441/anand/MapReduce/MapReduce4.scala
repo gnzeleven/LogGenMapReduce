@@ -23,18 +23,14 @@ object MapReduce4 {
 
   class TokenizerMapper extends Mapper[Object, Text, Text, IntWritable] {
 
-    val messageType = new Text()
-    val count = new IntWritable(1)
+    val errorType = new Text()
+    val length = new IntWritable()
 
     override def map(key: Object, value: Text, context: Mapper[Object, Text, Text, IntWritable]#Context) : Unit = {
       // Split the input line by the delimiter
       val line = value.toString().split(' ')
-      val formatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
-      val startTime = LocalTime.parse(config.getString("MapReduce4.startTime"), formatter)
-      val endTime = LocalTime.parse(config.getString("MapReduce4.endTime"), formatter)
       val stringPattern: Regex = config.getString("MapReduce4.stringPattern").r
 
-      val time = LocalTime.parse(line(0), formatter)
       val message = line(5)
 
       val isPatternPresent = stringPattern.findFirstMatchIn(message) match {
@@ -43,20 +39,21 @@ object MapReduce4 {
       }
 
       logger.info("Pattern present: " + isPatternPresent + " Message: " + message + "\n")
-      logger.info("Before: " + startTime.isBefore(time) + "\n")
-      logger.info("After: " + endTime.isAfter(time) + "\n")
 
-      if (startTime.isBefore(time) && endTime.isAfter(time) && isPatternPresent) {
-        messageType.set(line(2))
-        context.write(messageType, count)
+      if (isPatternPresent) {
+        errorType.set(line(2))
+        length.set(message.length)
+        context.write(errorType, length)
       }
     }
   }
 
   class IntSumReader extends Reducer[Text,IntWritable,Text,IntWritable] {
+    val result = new IntWritable()
     override def reduce(key: Text, values: Iterable[IntWritable], context: Reducer[Text, IntWritable, Text, IntWritable]#Context): Unit = {
-      var sum = values.asScala.foldLeft(0)(_ + _.get)
-      context.write(key, new IntWritable(sum))
+      val max = values.asScala.foldLeft(0)(_ max _.get)
+      result.set(max)
+      context.write(key, result)
     }
   }
 

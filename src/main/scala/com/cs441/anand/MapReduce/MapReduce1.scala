@@ -23,7 +23,7 @@ object MapReduce1 {
 
   class TokenizerMapper extends Mapper[Object, Text, Text, IntWritable] {
 
-    val messageType = new Text()
+    val errorType = new Text()
     val count = new IntWritable(1)
 
     override def map(key: Object, value: Text, context: Mapper[Object, Text, Text, IntWritable]#Context) : Unit = {
@@ -47,15 +47,15 @@ object MapReduce1 {
       logger.info("After: " + endTime.isAfter(time) + "\n")
 
       if (startTime.isBefore(time) && endTime.isAfter(time) && isPatternPresent) {
-        messageType.set(line(2))
-        context.write(messageType, count)
+        errorType.set(line(2))
+        context.write(errorType, count)
       }
     }
   }
 
   class IntSumReader extends Reducer[Text,IntWritable,Text,IntWritable] {
     override def reduce(key: Text, values: Iterable[IntWritable], context: Reducer[Text, IntWritable, Text, IntWritable]#Context): Unit = {
-      var sum = values.asScala.foldLeft(0)(_ + _.get)
+      val sum = values.asScala.foldLeft(0)(_ + _.get)
       context.write(key, new IntWritable(sum))
     }
   }

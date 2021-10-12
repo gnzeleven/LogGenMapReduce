@@ -18,22 +18,22 @@ object MapReduce3 {
 
   class TokenizerMapper extends Mapper[Object, Text, Text, IntWritable] {
 
-    val messageType = new Text()
+    val errorType = new Text()
     val count = new IntWritable(1)
 
     override def map(key: Object, value: Text, context: Mapper[Object, Text, Text, IntWritable]#Context) : Unit = {
       // Split the input line by the delimiter
       val line = value.toString().split(config.getString("MapReduce3.separator"))
       // Add the country (line[2]) to the variable state
-      messageType.set(line(2))
+      errorType.set(line(2))
       // Write (key: Text, value: IntWritable(count)) to the context
-      context.write(messageType, count)
+      context.write(errorType, count)
     }
   }
 
   class IntSumReader extends Reducer[Text,IntWritable,Text,IntWritable] {
      override def reduce(key: Text, values: Iterable[IntWritable], context: Reducer[Text, IntWritable, Text, IntWritable]#Context): Unit = {
-      var sum = values.asScala.foldLeft(0)(_ + _.get)
+      val sum = values.asScala.foldLeft(0)(_ + _.get)
       context.write(key, new IntWritable(sum))
     }
   }
