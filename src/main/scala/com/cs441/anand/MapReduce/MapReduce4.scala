@@ -10,11 +10,11 @@ import java.time.format.DateTimeFormatter
 import scala.collection.JavaConverters._
 import scala.util.matching.Regex
 
-class MapReduce1
+class MapReduce4
 
-object MapReduce1 {
+object MapReduce4 {
 
-  val config = ObtainConfigReference("MapReduce1") match {
+  val config = ObtainConfigReference("MapReduce4") match {
     case Some(value) => value
     case None => throw new RuntimeException("Cannot obtain a reference to the config data.")
   }
@@ -30,9 +30,9 @@ object MapReduce1 {
       // Split the input line by the delimiter
       val line = value.toString().split(' ')
       val formatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
-      val startTime = LocalTime.parse(config.getString("MapReduce1.startTime"), formatter)
-      val endTime = LocalTime.parse(config.getString("MapReduce1.endTime"), formatter)
-      val stringPattern: Regex = config.getString("MapReduce1.stringPattern").r
+      val startTime = LocalTime.parse(config.getString("MapReduce4.startTime"), formatter)
+      val endTime = LocalTime.parse(config.getString("MapReduce4.endTime"), formatter)
+      val stringPattern: Regex = config.getString("MapReduce4.stringPattern").r
 
       val time = LocalTime.parse(line(0), formatter)
       val message = line(5)
@@ -61,7 +61,7 @@ object MapReduce1 {
   }
 
   def start(job: Job): Unit = {
-    job.setJarByClass(classOf[MapReduce1])
+    job.setJarByClass(classOf[MapReduce4])
     job.setMapperClass(classOf[TokenizerMapper])
     job.setCombinerClass(classOf[IntSumReader])
     job.setReducerClass(classOf[IntSumReader])

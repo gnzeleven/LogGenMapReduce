@@ -2,7 +2,8 @@ package com.cs441.anand.MapReduce
 
 import com.cs441.anand.Utils.ObtainConfigReference
 import org.apache.hadoop.io.{IntWritable, Text}
-import org.apache.hadoop.mapreduce.{Mapper, Reducer}
+import org.apache.hadoop.mapreduce.{Job, Mapper, Reducer}
+
 import java.lang.Iterable
 import scala.collection.JavaConverters._
 
@@ -35,5 +36,15 @@ object MapReduce3 {
       var sum = values.asScala.foldLeft(0)(_ + _.get)
       context.write(key, new IntWritable(sum))
     }
+  }
+
+  def start(job: Job): Unit = {
+    job.setJarByClass(classOf[MapReduce3])
+    job.setMapperClass(classOf[TokenizerMapper])
+    job.setCombinerClass(classOf[IntSumReader])
+    job.setReducerClass(classOf[IntSumReader])
+    job.setOutputKeyClass(classOf[Text])
+    job.setOutputKeyClass(classOf[Text]);
+    job.setOutputValueClass(classOf[IntWritable]);
   }
 }
