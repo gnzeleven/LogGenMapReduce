@@ -14,33 +14,49 @@ import java.time.format.DateTimeFormatter
 import scala.collection.JavaConverters._
 import scala.util.matching.Regex
 
+/* computes distribution of different types of messages across predefined time intervals
+ and injected string instances of the designated regex pattern for these log message types */
 class MapReduce1
 
+/** Factory for [[MapReduce1]] instances */
 object MapReduce1 {
-
+  // get the config reference object
   val config = ObtainConfigReference("MapReduce1") match {
     case Some(value) => value
     case None => throw new RuntimeException("Cannot obtain a reference to the config data.")
   }
 
+  // create a logger for this class
   val logger = CreateLogger(classOf[MapReduce1.type])
 
-  class TokenizerMapper extends Mapper[Object, Text, Text, IntWritable] {
-
+  /** Custom Mapper class */
+  class CountMapper extends Mapper[Object, Text, Text, IntWritable] {
+    // errorType - key, count(1) - value
     val errorType = new Text()
-    val count = new IntWritable(1)
 
+    /** Override map function
+     * @param key : Object
+     * @param value : Text
+     * @param context : Mapper[Object, Text, Text, IntWritable]
+     * @return Unit - write (errorType, 1)
+     */
     override def map(key: Object, value: Text, context: Mapper[Object, Text, Text, IntWritable]#Context) : Unit = {
-      // Split the input line by the delimiter
+      // errorType - key, count(1) - value
       val line = value.toString().split(' ')
+
+      // create a DateTimeFormatter object
       val formatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
+
+      // get time interval and string pattern from application.conf file
       val startTime = LocalTime.parse(config.getString("MapReduce1.startTime"), formatter)
       val endTime = LocalTime.parse(config.getString("MapReduce1.endTime"), formatter)
       val stringPattern: Regex = config.getString("MapReduce1.stringPattern").r
 
-      val time = LocalTime.parse(line(0), formatter)
+      // get message and time from input, parse time to DateTimeFormatter object
       val message = line.last
+      val time = LocalTime.parse(line(0), formatter)
 
+      // check if the pattern is present
       val isPatternPresent = stringPattern.findFirstMatchIn(message) match {
         case Some(_) => true
         case None => false
@@ -50,32 +66,70 @@ object MapReduce1 {
       logger.info("Before: " + startTime.isBefore(time) + "\n")
       logger.info("After: " + endTime.isAfter(time) + "\n")
 
+      // if the pattern is present and is within specified time interval
       if (startTime.isBefore(time) && endTime.isAfter(time) && isPatternPresent) {
+        // set error type from the input
         errorType.set(line(2))
-        context.write(errorType, count)
+
+        // write error type as key and count(1) as value
+        context.write(errorType, new IntWritable(1))
       }
     }
   }
 
-  class IntSumReader extends Reducer[Text,IntWritable,Text,IntWritable] {
-    override def reduce(key: Text, values: Iterable[IntWritable], context: Reducer[Text, IntWritable, Text, IntWritable]#Context): Unit = {
+  /** Custom Reducer class */
+  class CountReducer extends Reducer[Text,IntWritable,Text,IntWritable] {
+    /** Override reduce function - aggregate count for each interval
+     * @param key : Text - interval
+     * @param values: Iterable[IntWritable] - collection of 1s for each interval
+     * @param context : Reducer[Text, IntWritable, Text, IntWritable]
+     * @return Unit - write (interval, count)
+     */
+    override def reduce(key: Text, values: Iterable[IntWritable],
+                        context: Reducer[Text, IntWritable, Text, IntWritable]#Context): Unit = {
+      // aggregate the 1s for each key
       val sum = values.asScala.foldLeft(0)(_ + _.get)
+
+      // write key, and sum as value
       context.write(key, new IntWritable(sum))
     }
   }
 
+  /** Method to start MapReduce1 - called by Driver class' main method
+   * @param args : Array[String] - command line input
+   * @return Unit - Writes (interval, count) sorted descending
+   */
   def start(args: Array[String]): Unit = {
+    logger.info("MapReduce1 starting...\n")
+
+    // Read the job's configuration of the cluster from configuration xml files
     val configuration = new Configuration
+
+    // Initialize job with default configuration of the cluster
     val job = Job.getInstance(configuration,"Log Gen Map Reduce")
-    job.setJarByClass(classOf[MapReduce1])
-    job.setMapperClass(classOf[TokenizerMapper])
-    job.setCombinerClass(classOf[IntSumReader])
-    job.setReducerClass(classOf[IntSumReader])
+
+    // Assign the driver class to the job
+    job.setJarByClass(this.getClass)
+
+    // Assign user-defined Mapper, Combiner and Reducer class
+    job.setMapperClass(classOf[CountMapper])
+    job.setCombinerClass(classOf[CountReducer])
+    job.setReducerClass(classOf[CountReducer])
+
+    // Set the Key and Value types of the output
     job.setOutputKeyClass(classOf[Text])
-    job.setOutputKeyClass(classOf[Text]);
     job.setOutputValueClass(classOf[IntWritable])
 
+    // Add input and output path from the args
     FileInputFormat.addInputPath(job, new Path(args(1)))
     FileOutputFormat.setOutputPath(job, new Path(args(2)))
+
+    // Wait till job1 completes
+    job.waitForCompletion(true)
+
+    logger.info("Job completed...\n")
+
+    // Exit after completion
+    System.exit(if(job.waitForCompletion(true))  0 else 1)
   }
 }

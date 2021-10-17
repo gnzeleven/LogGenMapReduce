@@ -11,6 +11,7 @@ import org.apache.hadoop.mapreduce.{Job, Mapper, Reducer}
 import java.lang.Iterable
 import scala.collection.JavaConverters._
 
+/* computes the number of the generated log messages for each message type */
 class MapReduce3
 
 /** Factory for [[MapReduce3]] instances */
@@ -33,7 +34,7 @@ object MapReduce3 {
      * @param key : Object
      * @param value : Text
      * @param context : Mapper[Object, Text, Text, IntWritable]
-     * @return Unit - write (interval, 1)
+     * @return Unit - write (errorType, 1)
      */
     override def map(key: Object, value: Text, context: Mapper[Object, Text, Text, IntWritable]#Context) : Unit = {
       // split the input line by the delimiter ' '
@@ -65,17 +66,17 @@ object MapReduce3 {
     }
   }
 
-  /** Method to start MapReduce1 - called by Driver class' main method
+  /** Method to start MapReduce3 - called by Driver class' main method
    * @param args : Array[String] - command line input
    * @return Unit - Writes (interval, count) sorted descending
    */
   def start(args: Array[String]): Unit = {
-    logger.info("MapReduce2 starting...\n")
+    logger.info("MapReduce3 starting...\n")
 
     // Read the job's configuration of the cluster from configuration xml files
     val configuration = new Configuration
 
-    // Initialize job1 with default configuration of the cluster
+    // Initialize job with default configuration of the cluster
     val job = Job.getInstance(configuration,"Log Gen Map Reduce")
 
     // Assign the driver class to the job
@@ -97,7 +98,7 @@ object MapReduce3 {
     // Wait till job1 completes
     job.waitForCompletion(true)
 
-    logger.info("Job 1 completed...\n")
+    logger.info("Job completed...\n")
 
     // Exit after completion
     System.exit(if(job.waitForCompletion(true))  0 else 1)
