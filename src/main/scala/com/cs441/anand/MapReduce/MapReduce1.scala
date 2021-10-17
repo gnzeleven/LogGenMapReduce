@@ -1,7 +1,11 @@
 package com.cs441.anand.MapReduce
 
 import com.cs441.anand.Utils.{CreateLogger, ObtainConfigReference}
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{IntWritable, Text}
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat
 import org.apache.hadoop.mapreduce.{Job, Mapper, Reducer}
 
 import java.lang.Iterable
@@ -35,7 +39,7 @@ object MapReduce1 {
       val stringPattern: Regex = config.getString("MapReduce1.stringPattern").r
 
       val time = LocalTime.parse(line(0), formatter)
-      val message = line(5)
+      val message = line.last
 
       val isPatternPresent = stringPattern.findFirstMatchIn(message) match {
         case Some(_) => true
@@ -60,13 +64,18 @@ object MapReduce1 {
     }
   }
 
-  def start(job: Job): Unit = {
+  def start(args: Array[String]): Unit = {
+    val configuration = new Configuration
+    val job = Job.getInstance(configuration,"Log Gen Map Reduce")
     job.setJarByClass(classOf[MapReduce1])
     job.setMapperClass(classOf[TokenizerMapper])
     job.setCombinerClass(classOf[IntSumReader])
     job.setReducerClass(classOf[IntSumReader])
     job.setOutputKeyClass(classOf[Text])
     job.setOutputKeyClass(classOf[Text]);
-    job.setOutputValueClass(classOf[IntWritable]);
+    job.setOutputValueClass(classOf[IntWritable])
+
+    FileInputFormat.addInputPath(job, new Path(args(1)))
+    FileOutputFormat.setOutputPath(job, new Path(args(2)))
   }
 }

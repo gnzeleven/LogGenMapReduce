@@ -21,15 +21,12 @@ object Driver {
     logger.info("Map Reduce model is starting...")
 
     args(0) match {
-      case "1" => MapReduce1.start(job)
-      case "2" => MapReduce2.start(job)
-      case "3" => MapReduce3.start(job)
-      case "4" => MapReduce4.start(job)
+      case "1" => MapReduce1.start(args)
+      case "2" => MapReduce2.start(args)
+      case "3" => MapReduce3.start(args)
+      case "4" => MapReduce4.start(args)
       case _ => logAndExit(logger)
     }
-
-    FileInputFormat.addInputPath(job, new Path(args(1)))
-    FileOutputFormat.setOutputPath(job, new Path(args(2)))
     logger.info("Map Reduce model finished...")
     System.exit(if(job.waitForCompletion(true))  0 else 1)
   }

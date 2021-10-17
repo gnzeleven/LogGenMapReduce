@@ -1,7 +1,11 @@
 package com.cs441.anand.MapReduce
 
 import com.cs441.anand.Utils.ObtainConfigReference
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{IntWritable, Text}
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat
 import org.apache.hadoop.mapreduce.{Job, Mapper, Reducer}
 
 import java.lang.Iterable
@@ -38,7 +42,10 @@ object MapReduce3 {
     }
   }
 
-  def start(job: Job): Unit = {
+  def start(args: Array[String]): Unit = {
+
+    val configuration = new Configuration
+    val job = Job.getInstance(configuration,"Log Gen Map Reduce")
     job.setJarByClass(classOf[MapReduce3])
     job.setMapperClass(classOf[TokenizerMapper])
     job.setCombinerClass(classOf[IntSumReader])
@@ -46,5 +53,7 @@ object MapReduce3 {
     job.setOutputKeyClass(classOf[Text])
     job.setOutputKeyClass(classOf[Text]);
     job.setOutputValueClass(classOf[IntWritable]);
+    FileInputFormat.addInputPath(job, new Path(args(1)))
+    FileOutputFormat.setOutputPath(job, new Path(args(2)))
   }
 }
