@@ -3,7 +3,7 @@ package com.cs441.anand.MapReduce
 import com.cs441.anand.Utils.{CreateLogger, ObtainConfigReference}
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
-import org.apache.hadoop.io.{IntWritable, Text}
+import org.apache.hadoop.io.{IntWritable, Text, WritableComparable, WritableComparator}
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat
 import org.apache.hadoop.mapreduce.{Job, Mapper, Reducer}
@@ -16,29 +16,41 @@ import scala.util.matching.Regex
 
 class MapReduce2
 
+/** Factory for [[MapReduce2]] instances */
 object MapReduce2 {
-
+  // get the config reference object
   val config = ObtainConfigReference("MapReduce2") match {
     case Some(value) => value
     case None => throw new RuntimeException("Cannot obtain a reference to the config data.")
   }
 
+  // create a logger for this class
   val logger = CreateLogger(classOf[MapReduce2.type])
 
-  class TokenizerMapper extends Mapper[Object, Text, Text, IntWritable] {
+  /** Class for [[CountMapper]] instances - first mapper */
+  class CountMapper extends Mapper[Object, Text, Text, IntWritable] {
 
+    // interval - key, count(1) - value
     val interval = new Text()
-    val count = new IntWritable(1)
 
+    /** Override map function
+     * @param key : Object
+     * @param value : Text
+     * @param context : Mapper[Object, Text, Text, IntWritable]
+     * @return Unit - write (interval, 1)
+     */
     override def map(key: Object, value: Text, context: Mapper[Object, Text, Text, IntWritable]#Context) : Unit = {
-      // Split the input line by the delimiter
+      // split the input line by the delimiter ' '
       val line = value.toString().split(' ')
+
+      // get string pattern from application.conf file
       val stringPattern: Regex = config.getString("MapReduce2.stringPattern").r
 
-      //val time = LocalTime.parse(line(0), formatter)
+      // get the message and the type from the input
       val message = line.last
       val messageType = line(2)
 
+      // check if the pattern is present
       val isPatternPresent = stringPattern.findFirstMatchIn(message) match {
         case Some(_) => true
         case None => false
@@ -46,71 +58,151 @@ object MapReduce2 {
 
       logger.info("Pattern present: " + isPatternPresent + " Message: " + message + "\n")
 
+      // if the pattern is present and the message type is "ERROR"
       if (messageType == "ERROR" && isPatternPresent) {
         val time = line(0).toString().split('.')(0)
         interval.set(time)
-        context.write(interval, count)
+
+        // write interval as key and count(1) as value
+        context.write(interval, new IntWritable(1))
       }
     }
   }
 
-  class IntSumReader extends Reducer[Text,IntWritable,Text,IntWritable] {
-    override def reduce(key: Text, values: Iterable[IntWritable], context: Reducer[Text, IntWritable, Text, IntWritable]#Context): Unit = {
-      var sum = values.asScala.foldLeft(0)(_ + _.get)
+  /** Class for [[CountReducer]] instances - first reducer */
+  class CountReducer extends Reducer[Text,IntWritable,Text,IntWritable] {
+    /** Override reduce function - aggregate count for each interval
+     * @param key : Text - interval
+     * @param values: Iterable[IntWritable] - collection of 1s for each interval
+     * @param context : Reducer[Text, IntWritable, Text, IntWritable]
+     * @return Unit - write (interval, count)
+     */
+    override def reduce(key: Text, values: Iterable[IntWritable],
+                        context: Reducer[Text, IntWritable, Text, IntWritable]#Context): Unit = {
+      // aggregate the 1s for each key
+      val sum = values.asScala.foldLeft(0)(_ + _.get)
+
+      // write key, and sum as value
       context.write(key, new IntWritable(sum))
     }
   }
 
-  class SwapperMapper extends Mapper[Object, Text, Text, Text] {
+  /** Class for [[SwapMapper]] instances - second mapper */
+  class SwapMapper extends Mapper[Object, Text, Text, Text] {
 
+    // create count, interval of type Text()
     val count = new Text()
     val interval = new Text()
 
+    /** Override map function - Swap interval, count from first reducer to count, interval
+     * @param key : Object
+     * @param value : Text
+     * @param context : Mapper[Object, Text, Text, Text]
+     * @return : Unit - writes (count, interval)
+     */
     override def map(key: Object, value: Text, context: Mapper[Object, Text, Text, Text]#Context) : Unit = {
-      // Split the input line by the delimiter
+      // split the input line by the delimiter '\t'
       val line = value.toString().split('\t')
-      val k = line(1)
-      val v = line(0)
-      count.set(k)
-      interval.set(v)
+
+      // set values for count, interval
+      count.set(line(1))
+      interval.set(line(0))
+
+      // write (count, interval)
       context.write(count, interval)
     }
   }
 
-  class SorterReducer extends Reducer[Text,Text,Text,Text] {
+  /** Class for [[CustomComparator]] instances */
+  class CustomComparator extends WritableComparator (classOf[Text], true){
+    /** Override compare function - descending order of counts before reducer
+     * @param a: WritableComparable[_]
+     * @param b: WritableComparable[_]
+     * @return : Int - return -1 * (default output - ascending)
+     */
+    override def compare(a: WritableComparable[_], b: WritableComparable[_]) : Int = {
+      return -1 * a.toString.compareTo(b.toString)
+    }
+  }
+
+  /** Class for [[SortReducer]] instances - second reducer */
+  class SortReducer extends Reducer[Text,Text,Text,Text] {
+    /** Override reduce function
+     * @param key : Text - count
+     * @param values : Iterable[Text] - collection of intervals
+     * @param context : Reducer[Text, Text, Text, Text]
+     * @return Unit - Writes (interval, count) sorted descending
+     */
     override def reduce(key: Text, values: Iterable[Text], context: Reducer[Text, Text, Text, Text]#Context): Unit = {
+      // loop through each value in the collection of values
       values.asScala.foreach((value) => {
+        // write (value, key) not (key, value)
         context.write(value, key)
       })
     }
   }
 
+  /** Method to start MapReduce2 - called by driver class
+   * @param args : Array[String] - command line input
+   * @return Unit - Writes (interval, count) sorted descending
+   */
   def start(args: Array[String]): Unit = {
+    logger.info("MapReduce2 starting...\n")
+
+    // Read job1's configuration of the cluster from configuration xml files
     val configuration1 = new Configuration
+
+    // Initialize job1 with default configuration of the cluster
     val job1 = Job.getInstance(configuration1,"Log Gen Map Reduce")
-    job1.setJarByClass(classOf[MapReduce2])
-    job1.setMapperClass(classOf[TokenizerMapper])
-    job1.setCombinerClass(classOf[IntSumReader])
-    job1.setReducerClass(classOf[IntSumReader])
-    job1.setOutputKeyClass(classOf[Text])
+
+    // Assign the driver class to the job
+    job1.setJarByClass(this.getClass)
+
+    // Assign user-defined Mapper, Combiner and Reducer class
+    job1.setMapperClass(classOf[CountMapper])
+    job1.setCombinerClass(classOf[CountReducer])
+    job1.setReducerClass(classOf[CountReducer])
+
+    // Set the Key and Value types of the output
     job1.setOutputKeyClass(classOf[Text])
     job1.setOutputValueClass(classOf[IntWritable])
 
+    // Add input and output path from the args
     FileInputFormat.addInputPath(job1, new Path(args(1)))
     FileOutputFormat.setOutputPath(job1, new Path(args(2)))
+
+    logger.info("Job 1 completed...\n")
+
+    // Wait till job1 completes
     job1.waitForCompletion(true)
 
+    // Read job2's configuration of the cluster from configuration xml files
     val configuration2 = new Configuration
+
+    // Initialize job2 with default configuration of the cluster
     val job2 = Job.getInstance(configuration2,"Log Gen Map Reduce 2")
-    job2.setJarByClass(classOf[MapReduce2])
-    job2.setMapperClass(classOf[SwapperMapper])
-    job2.setCombinerClass(classOf[SorterReducer])
-    job2.setReducerClass(classOf[SorterReducer])
-    job2.setOutputKeyClass(classOf[Text])
+
+    // Assign the driver class to the job
+    job2.setJarByClass(this.getClass)
+
+    // Assign user-defined Mapper, Combiner, Comparator and Reducer class
+    job2.setMapperClass(classOf[SwapMapper])
+    job2.setCombinerClass(classOf[SortReducer])
+    job2.setSortComparatorClass(classOf[CustomComparator])
+    job2.setReducerClass(classOf[SortReducer])
+
+    // Set the Key and Value types of the output
     job2.setOutputKeyClass(classOf[Text])
     job2.setOutputValueClass(classOf[Text])
 
+    // Add input and output path from the args
+    // input of mapper2 is the output of reducer1
     FileInputFormat.addInputPath(job2, new Path(args(2)))
     FileOutputFormat.setOutputPath(job2, new Path(args(3)))
+
+    logger.info("Job 2 completed...\n")
+
+    // Exit after completion
+    System.exit(if(job2.waitForCompletion(true))  0 else 1)
   }
 }

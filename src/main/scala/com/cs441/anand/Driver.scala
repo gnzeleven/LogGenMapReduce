@@ -27,8 +27,6 @@ object Driver {
       case "4" => MapReduce4.start(args)
       case _ => logAndExit(logger)
     }
-    logger.info("Map Reduce model finished...")
-    System.exit(if(job.waitForCompletion(true))  0 else 1)
   }
 
   def logAndExit(logger: Logger): Unit = {
