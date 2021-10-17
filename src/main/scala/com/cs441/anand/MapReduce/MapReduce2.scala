@@ -14,6 +14,8 @@ import java.time.format.DateTimeFormatter
 import scala.collection.JavaConverters._
 import scala.util.matching.Regex
 
+/* computes time intervals sorted in the descending order, that contains most
+ log messages of type ERROR with injected regex pattern string instances */
 class MapReduce2
 
 /** Factory for [[MapReduce2]] instances */
@@ -27,9 +29,8 @@ object MapReduce2 {
   // create a logger for this class
   val logger = CreateLogger(classOf[MapReduce2.type])
 
-  /** Class for [[CountMapper]] instances - first mapper */
+  /** Custom Mapper class - first mapper */
   class CountMapper extends Mapper[Object, Text, Text, IntWritable] {
-
     // interval - key, count(1) - value
     val interval = new Text()
 
@@ -69,7 +70,7 @@ object MapReduce2 {
     }
   }
 
-  /** Class for [[CountReducer]] instances - first reducer */
+  /** Custom Reducer class - first reducer */
   class CountReducer extends Reducer[Text,IntWritable,Text,IntWritable] {
     /** Override reduce function - aggregate count for each interval
      * @param key : Text - interval
@@ -87,7 +88,7 @@ object MapReduce2 {
     }
   }
 
-  /** Class for [[SwapMapper]] instances - second mapper */
+  /** Custom Mapper class - second mapper */
   class SwapMapper extends Mapper[Object, Text, Text, Text] {
 
     // create count, interval of type Text()
@@ -113,7 +114,7 @@ object MapReduce2 {
     }
   }
 
-  /** Class for [[CustomComparator]] instances */
+  /** Custom Comparator class */
   class CustomComparator extends WritableComparator (classOf[Text], true){
     /** Override compare function - descending order of counts before reducer
      * @param a: WritableComparable[_]
@@ -125,7 +126,7 @@ object MapReduce2 {
     }
   }
 
-  /** Class for [[SortReducer]] instances - second reducer */
+  /** Custom Reducer class - second reducer */
   class SortReducer extends Reducer[Text,Text,Text,Text] {
     /** Override reduce function
      * @param key : Text - count
@@ -135,14 +136,14 @@ object MapReduce2 {
      */
     override def reduce(key: Text, values: Iterable[Text], context: Reducer[Text, Text, Text, Text]#Context): Unit = {
       // loop through each value in the collection of values
-      values.asScala.foreach((value) => {
+      values.asScala.foreach((value: Text) => {
         // write (value, key) not (key, value)
         context.write(value, key)
       })
     }
   }
 
-  /** Method to start MapReduce2 - called by driver class
+  /** Method to start MapReduce2 - called by driver class' main method
    * @param args : Array[String] - command line input
    * @return Unit - Writes (interval, count) sorted descending
    */
@@ -171,10 +172,10 @@ object MapReduce2 {
     FileInputFormat.addInputPath(job1, new Path(args(1)))
     FileOutputFormat.setOutputPath(job1, new Path(args(2)))
 
-    logger.info("Job 1 completed...\n")
-
     // Wait till job1 completes
     job1.waitForCompletion(true)
+
+    logger.info("Job 1 completed...\n")
 
     // Read job2's configuration of the cluster from configuration xml files
     val configuration2 = new Configuration
@@ -185,9 +186,8 @@ object MapReduce2 {
     // Assign the driver class to the job
     job2.setJarByClass(this.getClass)
 
-    // Assign user-defined Mapper, Combiner, Comparator and Reducer class
+    // Assign user-defined Mapper, Combiner, and Reducer class
     job2.setMapperClass(classOf[SwapMapper])
-    job2.setCombinerClass(classOf[SortReducer])
     job2.setSortComparatorClass(classOf[CustomComparator])
     job2.setReducerClass(classOf[SortReducer])
 
@@ -199,6 +199,9 @@ object MapReduce2 {
     // input of mapper2 is the output of reducer1
     FileInputFormat.addInputPath(job2, new Path(args(2)))
     FileOutputFormat.setOutputPath(job2, new Path(args(3)))
+
+    // Wait till job1 completes
+    job2.waitForCompletion(true)
 
     logger.info("Job 2 completed...\n")
 
