@@ -124,7 +124,7 @@ object MapReduce4 {
     FileInputFormat.addInputPath(job, new Path(args(1)))
     FileOutputFormat.setOutputPath(job, new Path(args(2)))
 
-    // Wait till job1 completes
+    // Wait till the job completes
     job.waitForCompletion(true)
 
     logger.info("Job completed...\n")
