@@ -16,12 +16,6 @@ class MapReduce3
 
 /** Factory for [[MapReduce3]] instances */
 object MapReduce3 {
-  // get the config reference object
-  val config = ObtainConfigReference("MapReduce3") match {
-    case Some(value) => value
-    case None => throw new RuntimeException("Cannot obtain a reference to the config data.")
-  }
-
   // create a logger for this class
   val logger = CreateLogger(classOf[MapReduce3.type])
 
