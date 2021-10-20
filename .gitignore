@@ -3,7 +3,9 @@
 bin/
 project/project
 project/target
-target/
+target/global*
+target/streams
+target/task-temp*
 build/
 out/
 
