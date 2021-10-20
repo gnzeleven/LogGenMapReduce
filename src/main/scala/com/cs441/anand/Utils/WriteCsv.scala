@@ -6,7 +6,7 @@ import java.io.{BufferedWriter, FileWriter, File}
 class WriteCsv
 
 /** Factory for [[WriteCsv]] instances */
-object WriteCsv extends App {
+object WriteCsv {
   val base = System.getProperty("user.dir")
   List(
        "mapreduce1_final.csv",

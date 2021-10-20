@@ -6,7 +6,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{IntWritable, Text}
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat
-import org.apache.hadoop.mapreduce.{Job, Mapper, Reducer}
+import org.apache.hadoop.mapreduce.{Job, Mapper, Partitioner, Reducer}
 
 import java.lang.Iterable
 import java.time.LocalTime
@@ -77,8 +77,31 @@ object MapReduce1 {
     }
   }
 
+  /** Custom Partitioner class */
+  class CustomPartitioner extends Partitioner[Text, IntWritable] {
+    /** Override reduce function - aggregate count for each interval
+     * @param key : Text - error type
+     * @param value: IntWritable - value 1
+     * @param numReduceTasks : Int
+     * @return Unit - write (interval, count)
+     */
+    override def getPartition(key: Text, value: IntWritable, numReduceTasks: Int): Int = {
+      // split the input from the mapper
+      val errorType = value.toString().split("\t")(0)
+
+      // if the number of reduce tasks is 0,
+      if (numReduceTasks == 0) return 0
+
+      // if the error type is INFO, assign to second reducer
+      if (errorType == "INFO") return 1 % numReduceTasks
+
+      // assign other error types to first reducer
+      return 0
+    }
+  }
+
   /** Custom Reducer class */
-  class CountReducer extends Reducer[Text,IntWritable,Text,IntWritable] {
+  class CountReducer extends Reducer[Text, IntWritable, Text, IntWritable] {
     /** Override reduce function - aggregate count for each interval
      * @param key : Text - interval
      * @param values: Iterable[IntWritable] - collection of 1s for each interval
@@ -106,7 +129,7 @@ object MapReduce1 {
     val configuration = new Configuration
 
     // Initialize job with default configuration of the cluster
-    val job = Job.getInstance(configuration,"Log Gen Map Reduce")
+    val job = Job.getInstance(configuration,"map/reduce task 1")
 
     // Assign the driver class to the job
     job.setJarByClass(this.getClass)
@@ -115,6 +138,12 @@ object MapReduce1 {
     job.setMapperClass(classOf[CountMapper])
     job.setCombinerClass(classOf[CountReducer])
     job.setReducerClass(classOf[CountReducer])
+
+    // Assign custom partitioner class
+    job.setPartitionerClass(classOf[CustomPartitioner])
+
+    // Set number of reduce tasks to 2
+    job.setNumReduceTasks(2)
 
     // Set the Key and Value types of the output
     job.setOutputKeyClass(classOf[Text])

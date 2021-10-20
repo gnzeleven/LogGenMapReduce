@@ -6,7 +6,7 @@ import org.apache.hadoop.fs.Path
 import org.apache.hadoop.io.{IntWritable, Text, WritableComparable, WritableComparator}
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat
-import org.apache.hadoop.mapreduce.{Job, Mapper, Reducer}
+import org.apache.hadoop.mapreduce.{Job, Mapper, Partitioner, Reducer}
 
 import java.lang.Iterable
 import java.time.LocalTime
@@ -70,8 +70,40 @@ object MapReduce2 {
     }
   }
 
+  /** Custom Partitioner class */
+  class CustomPartitioner extends Partitioner[Text, IntWritable] {
+    /** Override reduce function - aggregate count for each interval
+     * @param key : Text - error type
+     * @param value: IntWritable - value 1
+     * @param numReduceTasks : Int
+     * @return Unit - write (interval, count)
+     */
+    override def getPartition(key: Text, value: IntWritable, numReduceTasks: Int): Int = {
+      // split the input from the mapper
+      val interval = value.toString().split("\t")(0)
+
+      // get the seconds value
+      val seconds = interval.split(":").last.toInt
+
+      // if the number of reduce tasks is 0,
+      if (numReduceTasks == 0) return 0
+
+      // if the seconds value is between 45 and 60, assign to first reducer
+      if (seconds >= 45 && seconds < 60) return 1 % numReduceTasks
+
+      // if the seconds value is between 30 and 45, assign to second reducer
+      else if (seconds >= 30 && seconds < 45) return 2 % numReduceTasks
+
+      // if the seconds value is between 15 and 30, assign to third reducer
+      else if (seconds >= 15 && seconds < 30) return 3 % numReduceTasks
+
+      // by default, seconds value is between 00 and 15
+      return 0
+    }
+  }
+
   /** Custom Reducer class - first reducer */
-  class CountReducer extends Reducer[Text,IntWritable,Text,IntWritable] {
+  class CountReducer extends Reducer[Text, IntWritable, Text, IntWritable] {
     /** Override reduce function - aggregate count for each interval
      * @param key : Text - interval
      * @param values: Iterable[IntWritable] - collection of 1s for each interval
@@ -127,7 +159,7 @@ object MapReduce2 {
   }
 
   /** Custom Reducer class - second reducer */
-  class SortReducer extends Reducer[Text,Text,Text,Text] {
+  class SortReducer extends Reducer[Text, Text, Text, Text] {
     /** Override reduce function
      * @param key : Text - count
      * @param values : Iterable[Text] - collection of intervals
@@ -154,7 +186,7 @@ object MapReduce2 {
     val configuration1 = new Configuration
 
     // Initialize job1 with default configuration of the cluster
-    val job1 = Job.getInstance(configuration1,"Log Gen Map Reduce")
+    val job1 = Job.getInstance(configuration1,"map/reduce task 2 - job1")
 
     // Assign the driver class to the job
     job1.setJarByClass(this.getClass)
@@ -163,6 +195,12 @@ object MapReduce2 {
     job1.setMapperClass(classOf[CountMapper])
     job1.setCombinerClass(classOf[CountReducer])
     job1.setReducerClass(classOf[CountReducer])
+
+    // Assign custom partitioner class
+    job1.setPartitionerClass(classOf[CustomPartitioner])
+
+    // Set number of reduce tasks to 4
+    job1.setNumReduceTasks(4)
 
     // Set the Key and Value types of the output
     job1.setOutputKeyClass(classOf[Text])
@@ -181,7 +219,7 @@ object MapReduce2 {
     val configuration2 = new Configuration
 
     // Initialize job2 with default configuration of the cluster
-    val job2 = Job.getInstance(configuration2,"Log Gen Map Reduce 2")
+    val job2 = Job.getInstance(configuration2,"map/reduce task 2 - job2")
 
     // Assign the driver class to the job
     job2.setJarByClass(this.getClass)
