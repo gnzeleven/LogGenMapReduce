@@ -71,7 +71,7 @@ object MapReduce2 {
   }
 
   /** Custom Partitioner class */
-  class CustomPartitioner extends Partitioner[Text,IntWritable] {
+  class CustomPartitioner extends Partitioner[Text, IntWritable] {
     /** Override reduce function - aggregate count for each interval
      * @param key : Text - error type
      * @param value: IntWritable - value 1
@@ -103,7 +103,7 @@ object MapReduce2 {
   }
 
   /** Custom Reducer class - first reducer */
-  class CountReducer extends Reducer[Text,IntWritable,Text,IntWritable] {
+  class CountReducer extends Reducer[Text, IntWritable, Text, IntWritable] {
     /** Override reduce function - aggregate count for each interval
      * @param key : Text - interval
      * @param values: Iterable[IntWritable] - collection of 1s for each interval
@@ -159,7 +159,7 @@ object MapReduce2 {
   }
 
   /** Custom Reducer class - second reducer */
-  class SortReducer extends Reducer[Text,Text,Text,Text] {
+  class SortReducer extends Reducer[Text, Text, Text, Text] {
     /** Override reduce function
      * @param key : Text - count
      * @param values : Iterable[Text] - collection of intervals
@@ -186,7 +186,7 @@ object MapReduce2 {
     val configuration1 = new Configuration
 
     // Initialize job1 with default configuration of the cluster
-    val job1 = Job.getInstance(configuration1,"Log Gen Map Reduce")
+    val job1 = Job.getInstance(configuration1,"map/reduce task 2 - job1")
 
     // Assign the driver class to the job
     job1.setJarByClass(this.getClass)
@@ -219,7 +219,7 @@ object MapReduce2 {
     val configuration2 = new Configuration
 
     // Initialize job2 with default configuration of the cluster
-    val job2 = Job.getInstance(configuration2,"Log Gen Map Reduce 2")
+    val job2 = Job.getInstance(configuration2,"map/reduce task 2 - job2")
 
     // Assign the driver class to the job
     job2.setJarByClass(this.getClass)

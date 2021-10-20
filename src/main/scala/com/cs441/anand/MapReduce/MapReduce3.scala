@@ -66,7 +66,7 @@ object MapReduce3 {
   }
 
   /** Custom Reducer class */
-  class CountReducer extends Reducer[Text,IntWritable,Text,IntWritable] {
+  class CountReducer extends Reducer[Text, IntWritable, Text, IntWritable] {
     /** Override reduce function - aggregate count for each interval
      * @param key : Text - error type
      * @param values: Iterable[IntWritable] - collection of 1s for each interval
@@ -94,7 +94,7 @@ object MapReduce3 {
     val configuration = new Configuration
 
     // Initialize job with default configuration of the cluster
-    val job = Job.getInstance(configuration,"Log Gen Map Reduce")
+    val job = Job.getInstance(configuration,"map/reduce task 3")
 
     // Assign the driver class to the job
     job.setJarByClass(this.getClass)
