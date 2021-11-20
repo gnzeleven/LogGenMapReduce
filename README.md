@@ -1,4 +1,4 @@
-# Distributed Cloud Computing - Map/Reduce Model
+# Log File Processing using Hadoop Map/Reduce
 
 ## Introduction
 
