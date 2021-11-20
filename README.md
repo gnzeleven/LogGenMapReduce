@@ -1,12 +1,8 @@
-﻿# Homework 2
-##### Anandavignesh Velangadu Sivakumar
-##### avelan2@uic.edu
-### Distributed Cloud Computing - Map/Reduce Model
-### Grade: 9%
+# Distributed Cloud Computing - Map/Reduce Model
 
 ## Introduction
 
-The goal of this homework is for students to gain experience with solving a distributed computational problem using cloud computing technologies. Design and implement an instance of the map/reduce computational model for the following four tasks:
+The goal of this project to gain experience with solving a distributed computational problem using cloud computing technologies. Design and implement an instance of the map/reduce computational model for the following four tasks:
 
 <b>1)</b> Compute distribution of different types of messages across predefined time intervals and injected string instances of the designated regex pattern for these log message types
 <b>2)</b> Compute time intervals sorted in the descending order, that contains most log messages of type ERROR with injected regex pattern string instances
